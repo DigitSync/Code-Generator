@@ -1,0 +1,313 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Generator & Decoder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        input[type="text"], select, input[type="file"], textarea {
+            width: 90%;
+            padding: 10px;
+            margin-top: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px 5px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #code-container, #decoded-text {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            background-color: #fff;
+            display: inline-block;
+            word-wrap: break-word;
+            max-width: 100%;
+        }
+        #video {
+            width: 100%;
+            height: auto;
+            max-width: 300px;
+            border: 1px solid #ddd;
+            margin-top: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Code Generator Section -->
+    <div class="container">
+        <h1>Code Generator</h1>
+        <input type="text" id="text-input" placeholder="Enter text here">
+        <select id="code-type">
+            <option value="qrcode">QR Code</option>
+            <option value="barcode">Barcode</option>
+            <option value="binary">Binary</option>
+            <option value="morse">Morse Code</option>
+        </select>
+        <button id="generate-btn">Generate Code</button>
+        <div id="code-container"></div>
+        <button id="download-btn">Download Code</button>
+        <button id="switch-to-decoder">Go to Decoder</button>
+    </div>
+
+    <!-- Code Decoder Section -->
+    <div class="container hidden" id="decoder-section">
+        <h1>Code Decoder</h1>
+
+        <h3>Decode QR Code from Image</h3>
+        <input type="file" id="file-input" accept="image/*">
+        <button id="decode-btn">Decode from Image</button>
+        <div id="decoded-text"></div>
+
+        <h3>Decode QR Code from Camera</h3>
+        <video id="video" autoplay></video>
+        <button id="start-camera">Start Camera</button>
+        <button id="stop-camera">Stop Camera</button>
+
+        <h3>Decode Binary or Morse Code</h3>
+        <textarea id="manual-input" placeholder="Enter Binary or Morse Code here"></textarea>
+        <button id="decode-manual">Decode Text</button>
+        <div id="manual-decoded-text"></div>
+        <button id="switch-to-generator">Go to Generator</button>
+    </div>
+
+    <!-- Include necessary JS libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.js"></script>
+
+    <script>
+        const morseCodeMap = {
+            'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
+            'G': '--.', 'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..',
+            'M': '--', 'N': '-.', 'O': '---', 'P': '.--.', 'Q': '--.-', 'R': '.-.',
+            'S': '...', 'T': '-', 'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-',
+            'Y': '-.--', 'Z': '--..', '1': '.----', '2': '..---', '3': '...--',
+            '4': '....-', '5': '.....', '6': '-....', '7': '--...', '8': '---..',
+            '9': '----.', '0': '-----', ' ': ' / ',
+            '/': ' '
+        };
+
+        const binaryToString = (binary) => binary.split(' ').map(char => String.fromCharCode(parseInt(char, 2))).join('');
+        const morseToString = (morse) => {
+            const morseToChar = {};
+            for (let char in morseCodeMap) {
+                morseToChar[morseCodeMap[char]] = char;
+            }
+            return morse.split(' ').map(code => morseToChar[code] || '').join('');
+        };
+
+        function textToBinary(text) {
+            return text.split('').map(char => char.charCodeAt(0).toString(2).padStart(8, '0')).join(' ');
+        }
+
+        function textToMorse(text) {
+            return text.toUpperCase().split('').map(char => morseCodeMap[char] || '').join(' ');
+        }
+
+        document.getElementById("generate-btn").addEventListener("click", function() {
+            var text = document.getElementById("text-input").value;
+            var codeType = document.getElementById("code-type").value;
+            var codeContainer = document.getElementById("code-container");
+            codeContainer.innerHTML = ""; // Clear previous code
+
+            if (text) {
+                switch (codeType) {
+                    case 'qrcode':
+                        new QRCode(codeContainer, { text: text, width: 256, height: 256 });
+                        break;
+                    case 'barcode':
+                        var img = document.createElement('img');
+                        JsBarcode(img, text, { format: 'CODE128' });
+                        codeContainer.appendChild(img);
+                        break;
+                    case 'binary':
+                        codeContainer.textContent = textToBinary(text);
+                        break;
+                    case 'morse':
+                        codeContainer.textContent = textToMorse(text);
+                        break;
+                }
+            }
+        });
+
+        document.getElementById("download-btn").addEventListener("click", function() {
+            var codeType = document.getElementById("code-type").value;
+            var codeContainer = document.getElementById("code-container");
+
+            if (codeType === 'binary' || codeType === 'morse') {
+                var textContent = codeContainer.textContent;
+                var blob = new Blob([textContent], { type: 'text/plain' });
+                var link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'code.txt';
+                link.click();
+            } else {
+                var img = codeContainer.querySelector('img') || codeContainer.querySelector('canvas');
+                if (img) {
+                    var canvas = document.createElement('canvas');
+                    var context = canvas.getContext('2d');
+                    canvas.width = img.clientWidth;
+                    canvas.height = img.clientHeight + 30; // Extra space for the text
+
+                    // Draw the image
+                    context.fillStyle = '#fff'; // White background
+                    context.fillRect(0, 0, canvas.width, canvas.height);
+                    if (img.tagName === 'IMG') {
+                        context.drawImage(img, 0, 0);
+                    } else {
+                        context.drawImage(img, 0, 0, img.width, img.height);
+                    }
+
+                    // Add the website text
+                    context.font = 'bold 16px Arial';
+                    context.fillStyle = '#000';
+                    context.textAlign = 'center';
+                    context.fillText('thedigitsync.blogspot.com', canvas.width / 2, img.clientHeight + 20);
+
+                    // Download the image
+                    var link = document.createElement('a');
+                    link.href = canvas.toDataURL("image/png");
+                    link.download = 'code.png';
+                    link.click();
+                } else {
+                    alert('No code generated to download.');
+                }
+            }
+        });
+
+        document.getElementById("decode-btn").addEventListener("click", function() {
+            var fileInput = document.getElementById("file-input");
+            var decodedTextContainer = document.getElementById("decoded-text");
+
+            if (fileInput.files.length === 0) {
+                alert("Please upload an image file.");
+                return;
+            }
+
+            var reader = new FileReader();
+            reader.onload = function() {
+                var img = new Image();
+                img.src = reader.result;
+                img.onload = function() {
+                    var canvas = document.createElement('canvas');
+                    var context = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    context.drawImage(img, 0, 0);
+
+                    var imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                    var code = jsQR(imageData.data, canvas.width, canvas.height);
+                    if (code) {
+                        decodedTextContainer.textContent = "Decoded Text: " + code.data;
+                    } else {
+                        decodedTextContainer.textContent = "No QR code found.";
+                    }
+                };
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        });
+
+        let video = document.getElementById("video");
+        let cameraStream;
+
+        document.getElementById("start-camera").addEventListener("click", async function() {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = cameraStream;
+                video.play();
+            }
+        });
+
+        document.getElementById("stop-camera").addEventListener("click", function() {
+            video.pause();
+            video.srcObject = null;
+            if (cameraStream) {
+                let tracks = cameraStream.getTracks();
+                tracks.forEach(track => track.stop());
+            }
+        });
+
+        video.addEventListener("play", function() {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = video.width;
+            canvas.height = video.height;
+
+            function scanCode() {
+                if (video.paused || video.ended) return;
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, canvas.width, canvas.height);
+                if (code) {
+                    document.getElementById('decoded-text').textContent = 'Decoded Text: ' + code.data;
+                }
+                requestAnimationFrame(scanCode);
+            }
+            scanCode();
+        });
+
+        document.getElementById("decode-manual").addEventListener("click", function() {
+            var manualInput = document.getElementById("manual-input").value.trim();
+            var decodedTextContainer = document.getElementById("manual-decoded-text");
+
+            if (!manualInput) {
+                alert("Please enter code to decode.");
+                return;
+            }
+
+            if (manualInput.includes(" ") && /^[01\s]+$/.test(manualInput)) {
+                decodedTextContainer.textContent = "Decoded Binary Text: " + binaryToString(manualInput);
+            } else {
+                decodedTextContainer.textContent = "Decoded Morse Text: " + morseToString(manualInput);
+            }
+        });
+
+        document.getElementById("switch-to-decoder").addEventListener("click", function() {
+            document.querySelector(".container").classList.add("hidden");
+            document.getElementById("decoder-section").classList.remove("hidden");
+        });
+
+        document.getElementById("switch-to-generator").addEventListener("click", function() {
+            document.querySelector(".container").classList.remove("hidden");
+            document.getElementById("decoder-section").classList.add("hidden");
+        });
+    </script>
+</body>
+</html>
